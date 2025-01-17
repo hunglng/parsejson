@@ -1,0 +1,116 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"languageName":"csharp","name":"csharp"}]}}
+
+#!csharp
+
+using System.IO;
+using System.Text.Json;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+
+#!csharp
+
+public class JsonColumn {
+    public string Name { get; set; }
+    public string Path { get; set; }
+    public string DataType { get; set; }
+    public JsonValueKind ValueKind { get; set; }
+}
+
+#!csharp
+
+var jsonString = File.ReadAllText("checkedoptionsv2.json");
+
+#!csharp
+
+var jsonData = File.ReadAllText("transactions.json");
+
+#!csharp
+
+var document = JsonDocument.Parse(jsonData);
+
+#!csharp
+
+public DataTable CreateDataTable(IEnumerable<JsonColumn> columns) {
+    var dataTable = new DataTable();
+    foreach (var column in columns)
+    {
+        var type = column.DataType switch
+        {
+        "int" => typeof(int),
+        "double" => typeof(double),
+        "string" => typeof(string),
+        "boolean" => typeof(bool),
+        _ => throw new ArgumentException($"{column.Name} unsupported data type: {column.DataType}")
+        };
+
+        dataTable.Columns.Add(column.Name, type);
+    }
+    return dataTable;
+}
+
+#!csharp
+
+public DataTable ReadDataFromJson(JsonDocument document, IEnumerable<JsonColumn> columns) {
+    // TODO check columns
+
+    var dataTable = CreateDataTable(columns);
+    var isGetArray = columns.Where(col => col.Path.Contains("[]")).Any();
+
+    if (!isGetArray) {
+        // PopulateSingleRow(document.RootElement, dataTable);
+
+    } else {
+
+    }
+
+    // foreach (var property in document.RootElement.EnumerateProperties()) {
+    //     var value = property.GetRawText();
+    //     if (value != null) {
+    //         dataTable.Rows.Add(value);
+    //     }
+    // }
+    return dataTable;
+}
+
+#!csharp
+
+var selectedColumns = JsonSerializer.Deserialize<List<JsonColumn>>(jsonString);
+var dataTable = CreateDataTable(selectedColumns);
+// columns =  columns.OrderBy(x => x.Path).ToList();
+// columns.Select(x => x.Path)
+selectedColumns
+
+#!csharp
+
+var isGetArray = selectedColumns.Where(col => col.Path.Contains("[]")).Any();
+
+#!csharp
+
+var columns = new List<JsonColumn>();
+var rootColumn = new JsonColumn
+{
+    Name = "$",
+    Path = document.RootElement.ValueKind == JsonValueKind.Array ? "$[]" : "$",
+    ValueKind = document.RootElement.ValueKind,
+    DataType = $"root{document.RootElement.ValueKind}"
+};
+columns.Add(rootColumn);
+switch (document.RootElement.ValueKind)
+    {
+        case JsonValueKind.Object:
+            var rootChildren = document.RootElement.EnumerateObject();
+            foreach (var child in rootChildren)
+            {
+                // ProcessJsonProperty(child, rootColumn.Path, columns);
+            };
+            break;
+        case JsonValueKind.Array:
+            rootColumn.Path = "$[]";
+            // ProcessJsonArray(document.RootElement, rootColumn, columns);
+            break;
+        default:
+            throw new ArgumentException("Unsupported JSON value kind", nameof(document.RootElement));
+    }

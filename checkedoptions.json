@@ -1,0 +1,104 @@
+[
+  {
+    "Name": "id",
+    "Path": "$.[\u0027results\u0027][].[\u0027id\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  },
+  {
+    "Name": "transactionId",
+    "Path": "$.[\u0027results\u0027][].[\u0027transactionId\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  },
+  {
+    "Name": "note",
+    "Path": "$.[\u0027results\u0027][].[\u0027note\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  },
+  {
+    "Name": "bankAccountRefid",
+    "Path": "$.[\u0027results\u0027][].[\u0027bankAccountRef\u0027].[\u0027id\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  },
+  {
+    "Name": "name",
+    "Path": "$.[\u0027results\u0027][].[\u0027bankAccountRef\u0027].[\u0027name\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  },
+  {
+    "Name": "date",
+    "Path": "$.[\u0027results\u0027][].[\u0027date\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  },
+  {
+    "Name": "status",
+    "Path": "$.[\u0027results\u0027][].[\u0027status\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  },
+  {
+    "Name": "currency",
+    "Path": "$.[\u0027results\u0027][].[\u0027currency\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  },
+  {
+    "Name": "currencyRate",
+    "Path": "$.[\u0027results\u0027][].[\u0027currencyRate\u0027]",
+    "DataType": "double",
+    "ValueKind": 4
+  },
+  {
+    "Name": "description",
+    "Path": "$.[\u0027results\u0027][].[\u0027lines\u0027][].[\u0027description\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  },
+  {
+    "Name": "recordRefid",
+    "Path": "$.[\u0027results\u0027][].[\u0027lines\u0027][].[\u0027recordRef\u0027].[\u0027id\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  },
+  {
+    "Name": "dataType",
+    "Path": "$.[\u0027results\u0027][].[\u0027lines\u0027][].[\u0027recordRef\u0027].[\u0027dataType\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  },
+  {
+    "Name": "amount",
+    "Path": "$.[\u0027results\u0027][].[\u0027lines\u0027][].[\u0027amount\u0027]",
+    "DataType": "double",
+    "ValueKind": 4
+  },
+  {
+    "Name": "totalAmount",
+    "Path": "$.[\u0027results\u0027][].[\u0027totalAmount\u0027]",
+    "DataType": "double",
+    "ValueKind": 4
+  },
+  {
+    "Name": "modifiedDate",
+    "Path": "$.[\u0027results\u0027][].[\u0027modifiedDate\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  },
+  {
+    "Name": "sourceModifiedDate",
+    "Path": "$.[\u0027results\u0027][].[\u0027sourceModifiedDate\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  },
+  {
+    "Name": "isDeleted",
+    "Path": "$.[\u0027results\u0027][].[\u0027metadata\u0027].[\u0027isDeleted\u0027]",
+    "DataType": "boolean",
+    "ValueKind": 6
+  }
+]

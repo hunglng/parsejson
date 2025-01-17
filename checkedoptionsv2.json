@@ -1,0 +1,38 @@
+[
+  {
+    "Name": "pageNumber",
+    "Path": "$.[\u0027pageNumber\u0027]",
+    "DataType": "double",
+    "ValueKind": 4
+  },
+  {
+    "Name": "pageSize",
+    "Path": "$.[\u0027pageSize\u0027]",
+    "DataType": "double",
+    "ValueKind": 4
+  },
+  {
+    "Name": "totalResults",
+    "Path": "$.[\u0027totalResults\u0027]",
+    "DataType": "double",
+    "ValueKind": 4
+  },
+  {
+    "Name": "currentHref",
+    "Path": "$.[\u0027_links\u0027].[\u0027current\u0027].[\u0027href\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  },
+  {
+    "Name": "selfHref",
+    "Path": "$.[\u0027_links\u0027].[\u0027self\u0027].[\u0027href\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  },
+  {
+    "Name": "nextHref",
+    "Path": "$.[\u0027_links\u0027].[\u0027next\u0027].[\u0027href\u0027]",
+    "DataType": "string",
+    "ValueKind": 3
+  }
+]

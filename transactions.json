@@ -1,0 +1,77 @@
+{
+    "results": [
+      {
+        "id": "062b3a9b-b04f-4d9c-9ebc-81dcb5bbf285",
+        "transactionId": "356deb9f-98e6-4d6f-8db3-b378241895a1",
+        "note": "Direct income 38e8c917-0afc-4583-8ffe-1b53ad601197",
+        "bankAccountRef": {
+          "id": "ff8fdc4c-2aad-4ec1-9430-6bd201832eb3",
+          "name": "Undeposited Funds"
+        },
+        "date": "2022-04-19T00:00:00",
+        "status": "Unreconciled",
+        "currency": "GBP",
+        "currencyRate": 1,
+        "lines": [
+          {                                                                                                                                                                                                                                                                                                                                                            
+            "description": "Payment for direct income $38e8c917-0afc-4583-8ffe-1b53ad601197",
+            "recordRef": {
+              "id": "38e8c917-0afc-4583-8ffe-1b53ad601197",
+              "dataType": "directIncomes"
+            },
+            "amount": 188.33
+          }
+        ],
+        "totalAmount": 188.33,
+        "modifiedDate": "2023-04-26T12:38:18",
+        "sourceModifiedDate": "2022-05-13T01:06:00",
+        "metadata": {
+          "isDeleted": false
+        }
+      },
+      {
+        "id": "f2656119-9521-4d51-a24d-003b44c1410b",
+        "transactionId": "1fde4f8f-68ca-48fc-8fe7-79ac467d2946",
+        "note": "Direct income c31a3778-e3ea-4d01-9281-dd2f291c8cb8",
+        "bankAccountRef": {
+          "id": "ff8fdc4c-2aad-4ec1-9430-6bd201832eb3",
+          "name": "Undeposited Funds"
+        },
+        "date": "2022-04-19T00:00:00",
+        "status": "Void",
+        "currency": "GBP",
+        "currencyRate": 1,
+        "lines": [
+          {
+            "description": "Payment for direct income $c31a3778-e3ea-4d01-9281-dd2f291c8cb8",
+            "recordRef": {
+              "id": "c31a3778-e3ea-4d01-9281-dd2f291c8cb8",
+              "dataType": "directIncomes"
+            },
+            "amount": 32095.91
+          }
+        ],
+        "totalAmount": 32095.91,
+        "modifiedDate": "2023-04-26T12:38:18",
+        "sourceModifiedDate": "2023-02-13T00:34:00",
+        "metadata": {
+          "isDeleted": false
+        }
+      }
+    ],
+    "pages":[1, 2 , 3],
+    "pageNumber": 1,
+    "pageSize": 2,
+    "totalResults": 1745,
+    "_links": {
+      "current": {
+        "href": "/companies/354a121b-855f-4d25-90ad-0905b498c1c0/connections/57b731ba-1d45-4386-ba58-2a1ca0234624/data/accountTransactions?page=1&pageSize=2"
+      },
+      "self": {
+        "href": "/companies/354a121b-855f-4d25-90ad-0905b498c1c0/connections/57b731ba-1d45-4386-ba58-2a1ca0234624/data/accountTransactions"
+      },
+      "next": {
+        "href": "/companies/354a121b-855f-4d25-90ad-0905b498c1c0/connections/57b731ba-1d45-4386-ba58-2a1ca0234624/data/accountTransactions?page=2&pageSize=2"
+      }
+    }
+  }
