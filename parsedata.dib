@@ -19,19 +19,167 @@ public class JsonColumn {
     public JsonValueKind ValueKind { get; set; }
 }
 
-#!csharp
+public class JsonPreproccessedNode 
+{
+    public string PropertyName {get; set;}
+    public string TokenName  {get; set;}
+    public string Path { get; set; }
+    public string DataColumnName {get;set;}
+    public JsonValueKind ValueKind {get;set;}
+    public JsonArrayHandleStrategy ArrayHandleStrategy {get;set;}
+    public IDictionary<string, JsonPreproccessedNode> InnerNodes {get;set;} = new Dictionary<string, JsonPreproccessedNode>();
+    public IDictionary<string, JsonPreproccessedNode> LeafNodes {get;set;} = new Dictionary<string, JsonPreproccessedNode>();
 
-var jsonString = File.ReadAllText("checkedoptionsv2.json");
+}
 
-#!csharp
+public class JsonArrayHandleStrategy
+{
+    public int? Start {get;set;}
+    public int? End {get;set;}
+}
 
-var jsonData = File.ReadAllText("transactions.json");
+public class PreprocessResult {
+    public JsonPreproccessedNode PreprocessedTree {get;set;}
+    public DataTable DataTable {get;set;}
+    public string KeyPath {get;set;}
+}
 
-#!csharp
+public void AddNodeToTree(JsonPreproccessedNode parent, IList<string> tokens, JsonColumn column)
+{
+    if (!tokens.Any()) throw new Exception("Tokens list is empty");
 
-var document = JsonDocument.Parse(jsonData);
+    var currentToken = tokens.FirstOrDefault();
+    tokens.RemoveAt(0);
+    if (!tokens.Any())
+    {
+        // TODO validate if column is an array
+        parent.LeafNodes.Add(currentToken , new JsonPreproccessedNode (){
+            TokenName = currentToken,
+            DataColumnName = column.Name,
+            Path = column.Path,
+            PropertyName = currentToken.TrimStart('[', '\'').TrimEnd('[',']','\'')
+        });
+        return;
+    }
 
-#!csharp
+    parent.InnerNodes.TryGetValue(currentToken, out var currentNode);
+    if (currentNode == null) 
+    {
+        currentNode = new JsonPreproccessedNode (){
+            TokenName = currentToken,
+            Path = $"{parent.Path}.{currentToken}",
+            PropertyName = currentToken.TrimStart('[', '\'').TrimEnd('[',']','\'')
+        };
+        
+        if (!currentToken.EndsWith("']")) {
+            currentNode.ValueKind = JsonValueKind.Array;
+            var firstCloseIndex = currentToken.IndexOf("']");
+            if (firstCloseIndex != -1) {
+                var arrayPart = currentToken.Substring(firstCloseIndex + 2);
+                // need to improve not only get all items
+                // to handle outside array path first
+                if (arrayPart == "[]")
+                {
+                    currentNode.ArrayHandleStrategy = new JsonArrayHandleStrategy() { Start = null, End = null  };
+                }else {
+                    // 1st item only
+                    currentNode.ArrayHandleStrategy = new JsonArrayHandleStrategy() { Start = 0, End = 0  };
+                    currentNode.PropertyName = currentToken.Substring(0, firstCloseIndex).TrimStart('[', '\'');
+                }
+            }
+            else 
+            {
+                throw new Exception($"Invalid JSON structure. Array format not correct: {currentToken}");
+            }
+        } else {
+            currentNode.ValueKind = JsonValueKind.Object;
+        }
+
+        parent.InnerNodes.Add(currentNode.TokenName, currentNode);
+    } 
+
+    AddNodeToTree(currentNode, tokens, column);
+}
+
+public void ProcessLeave(JsonElement element, DataRow row, JsonPreproccessedNode node) {
+    var prop = element.GetProperty(node.PropertyName);
+    if (element.ValueKind == JsonValueKind.Null) {
+        row[node.DataColumnName] = DBNull.Value;
+        return;
+    }
+
+    var columnType = row.Table.Columns[node.DataColumnName].DataType;
+    if (columnType == typeof(string)) {
+        row[node.DataColumnName] = prop.GetString();
+    } else if (columnType == typeof(int)) {
+        if (prop.TryGetInt32(out var value))
+            row[node.DataColumnName] = value;
+        else row[node.DataColumnName] = DBNull.Value;
+    } else if (columnType == typeof(double)) {
+        if (prop.TryGetDouble(out var value))
+            row[node.DataColumnName] = value;
+        else row[node.DataColumnName] = DBNull.Value;
+    } else if (columnType == typeof(bool)) {
+        row[node.DataColumnName] = prop.GetBoolean();
+    } else {
+        throw new ArgumentException("Unsupported data type for column: " + columnType.Name);
+    }
+}
+
+public void ProcessNode(JsonElement element, DataRow row, JsonPreproccessedNode node, string keyPath) {
+    foreach (var leaf in node.LeafNodes) {
+        ProcessLeave(element, row, leaf.Value);
+    }
+
+    var notInKeyNodes = node.InnerNodes.Where(x=> !x.Value.Path.StartsWith(keyPath) || keyPath == "$");
+    var inKeyNodes = node.InnerNodes.Where(x=> x.Value.Path.StartsWith(keyPath) && keyPath != "$");
+
+    foreach (var child in notInKeyNodes) {
+        try {
+            if (child.Value.ValueKind == JsonValueKind.Array) {
+                var innerElemement = element.GetProperty(child.Value.PropertyName);
+                if (innerElemement.ValueKind == JsonValueKind.Array && innerElemement.GetArrayLength() > 0) {
+                    var childElement = innerElemement[0];
+                    ProcessNode(childElement, row, child.Value, keyPath);
+                } else {
+                    //TODO throw error or log warning
+                }
+            } else {
+                var childElement = element.GetProperty(child.Value.PropertyName);
+                ProcessNode(childElement, row, child.Value, keyPath);
+            }
+        }
+        catch (KeyNotFoundException ex) {
+            throw new KeyNotFoundException($"Key not found: {child.Value.PropertyName} in node: {element.ToString()}", ex);
+        }
+    }
+
+    foreach (var child in inKeyNodes) {
+        try {
+            if (child.Value.ValueKind == JsonValueKind.Array) {
+                var innerElemement = element.GetProperty(child.Value.PropertyName);
+                if (innerElemement.ValueKind == JsonValueKind.Array && innerElemement.GetArrayLength() > 0) {
+                    var children = innerElemement.EnumerateArray();
+                    foreach (var childElement in children) {
+                        var newRow = row.Table.NewRow();
+                        newRow.ItemArray = row.ItemArray.Clone() as object[];
+                        row.Table.Rows.Add(newRow);
+                        ProcessNode(childElement, newRow, child.Value, keyPath);
+                    }
+                    row.Table.Rows.Remove(row);
+                } else {
+                    //TODO throw error or log warning
+                }
+            } else {
+                var childElement = element.GetProperty(child.Value.PropertyName);
+                ProcessNode(childElement, row, child.Value, keyPath);
+            }
+        }
+        catch (KeyNotFoundException ex) {
+            throw new KeyNotFoundException($"Key not found: {child.Value.PropertyName} in node: ", ex);
+        }
+    }
+}
 
 public DataTable CreateDataTable(IEnumerable<JsonColumn> columns) {
     var dataTable = new DataTable();
@@ -51,66 +199,186 @@ public DataTable CreateDataTable(IEnumerable<JsonColumn> columns) {
     return dataTable;
 }
 
-#!csharp
+public IList<string> TokenizePath(string input)
+{
+    List<string> parts = new List<string>();
+    int startIndex = 0;
+    int bracketLevel = 0;
 
-public DataTable ReadDataFromJson(JsonDocument document, IEnumerable<JsonColumn> columns) {
-    // TODO check columns
+    for (int i = 0; i < input.Length; i++)
+    {
+        if (input[i] == '[' && input[i+1] == '\'')
+        {
+            bracketLevel++;
+        }
+        else if (input[i] == ']' && input[i-1] == '\'')
+        {
+                bracketLevel--;
+        }
+        else if (input[i] == '.' && bracketLevel == 0) // split only if not inside brackets
+        {
+            parts.Add(input.Substring(startIndex, i - startIndex));
+            startIndex = i + 1;
+        }
+    }
+        parts.Add(input.Substring(startIndex));
+    return parts;
+}
 
-    var dataTable = CreateDataTable(columns);
-    var isGetArray = columns.Where(col => col.Path.Contains("[]")).Any();
+public PreprocessResult PreProcessColumns(IList<JsonColumn> columns)
+{
+    var result = new PreprocessResult();
+    result.KeyPath = "$";
 
-    if (!isGetArray) {
-        // PopulateSingleRow(document.RootElement, dataTable);
+    var root = new JsonPreproccessedNode() {
+        PropertyName = "$",
+        Path = "$",
+        TokenName = "$",
+    };
 
-    } else {
-
+    columns = columns.OrderBy(x =>x .Path).ToList();
+    var firstArrayPath = columns.FirstOrDefault(col => col.Path.Contains("[]"));
+    if (firstArrayPath != null) {
+        result.KeyPath = firstArrayPath.Path.Split("[]")[0];
     }
 
-    // foreach (var property in document.RootElement.EnumerateProperties()) {
-    //     var value = property.GetRawText();
-    //     if (value != null) {
-    //         dataTable.Rows.Add(value);
-    //     }
-    // }
+
+    // TODO need to validate same start
+
+
+    var firstColumn = columns.First();
+    if (firstColumn.Path.StartsWith("$[]")) {
+        // at first only support full array
+        root.ArrayHandleStrategy = new JsonArrayHandleStrategy() {
+            Start = null,
+            End = null
+        };
+        root.TokenName = "$[]";
+        root.Path = "$[]";
+        root.ValueKind = JsonValueKind.Array;
+    } else {
+        root.ValueKind = JsonValueKind.Object;
+    }
+
+    var parent = root;
+    foreach (var column in columns) {
+        // Improve by caching the parent position
+        var tokens = TokenizePath(column.Path);
+        tokens.RemoveAt(0); // Remove Root
+        AddNodeToTree(parent, tokens, column);
+    }
+
+    result.PreprocessedTree = root;
+    result.DataTable = CreateDataTable(columns);
+
+    return result;
+}
+
+public DataTable ConvertJsonToDataTable(JsonDocument document, IList<JsonColumn> columns) {
+    var preprocessResult = PreProcessColumns(columns);
+    var rootNode = preprocessResult.PreprocessedTree;
+    var dataTable = preprocessResult.DataTable;
+
+    var rootElement = document.RootElement;
+    var jsonElement = rootElement;
+    var node = rootNode;
+
+    if (node.ValueKind == JsonValueKind.Array) {
+    if (jsonElement.ValueKind == JsonValueKind.Array) {
+        var elements = jsonElement.EnumerateArray();
+        foreach (var element in elements) {
+                var row = dataTable.NewRow();
+                ProcessNode(element, dataTable.NewRow(), rootNode, preprocessResult.KeyPath);
+                dataTable.Rows.Add(row);
+        }
+    } else {
+        throw new ArgumentException("JSON structure and Selected Columns do not match");
+    }
+    } else if (node.ValueKind == JsonValueKind.Object) {
+        var row = dataTable.NewRow();
+        dataTable.Rows.Add(row);
+        ProcessNode(jsonElement, row, rootNode, preprocessResult.KeyPath);
+    } else {
+        throw new ArgumentException("Invalid JSON structure");
+    }
+
     return dataTable;
 }
 
 #!csharp
 
-var selectedColumns = JsonSerializer.Deserialize<List<JsonColumn>>(jsonString);
-var dataTable = CreateDataTable(selectedColumns);
-// columns =  columns.OrderBy(x => x.Path).ToList();
-// columns.Select(x => x.Path)
-selectedColumns
+var jsonString = File.ReadAllText("checkedoptions.json");
+var selectedColumns = JsonSerializer.Deserialize<IList<JsonColumn>>(jsonString);
 
 #!csharp
 
-var isGetArray = selectedColumns.Where(col => col.Path.Contains("[]")).Any();
+var jsonData = File.ReadAllText("transactions.json");
+var document = JsonDocument.Parse(jsonData);
 
 #!csharp
 
-var columns = new List<JsonColumn>();
-var rootColumn = new JsonColumn
-{
-    Name = "$",
-    Path = document.RootElement.ValueKind == JsonValueKind.Array ? "$[]" : "$",
-    ValueKind = document.RootElement.ValueKind,
-    DataType = $"root{document.RootElement.ValueKind}"
-};
-columns.Add(rootColumn);
-switch (document.RootElement.ValueKind)
+var dataTable = ConvertJsonToDataTable(document, selectedColumns);
+
+#!csharp
+
+public void PrintDataTable(DataTable table)
     {
-        case JsonValueKind.Object:
-            var rootChildren = document.RootElement.EnumerateObject();
-            foreach (var child in rootChildren)
+        if (table == null)
+        {
+            Console.WriteLine("DataTable is null.");
+            return;
+        }
+
+        if (table.Rows.Count == 0)
+        {
+           Console.WriteLine("DataTable is empty.");
+            return;
+        }
+         // Print column headers
+        foreach (DataColumn column in table.Columns)
+        {
+           Console.Write(column.ColumnName.PadRight(15) + "|");
+        }
+        Console.WriteLine();
+         foreach(DataColumn column in table.Columns)
+         {
+              Console.Write("---------------|");
+         }
+        Console.WriteLine();
+        // Print rows
+        foreach (DataRow row in table.Rows)
+        {
+            foreach (DataColumn column in table.Columns)
             {
-                // ProcessJsonProperty(child, rootColumn.Path, columns);
-            };
-            break;
-        case JsonValueKind.Array:
-            rootColumn.Path = "$[]";
-            // ProcessJsonArray(document.RootElement, rootColumn, columns);
-            break;
-        default:
-            throw new ArgumentException("Unsupported JSON value kind", nameof(document.RootElement));
+                 //Handle null values
+                string cellValue = (row[column] == DBNull.Value) ? "NULL" : row[column].ToString();
+
+                Console.Write(cellValue.PadRight(15) + "|");
+            }
+            Console.WriteLine();
+        }
+
     }
+
+#!csharp
+
+PrintDataTable(dataTable)
+
+#!csharp
+
+// var dt = new DataTable();
+// dt.Columns.Add(new DataColumn("name", typeof(string)));
+// dt.Columns.Add(new DataColumn("location", typeof(string)));
+// var r = dt.NewRow();
+// r["name"] = "John";
+// var r2 = dt.NewRow();
+// r2.ItemArray = r.ItemArray.Clone() as object[];
+// r["location"] = "New York";
+// r2["location"] = "Los Angeles";
+// r.Table.Rows.Add(r2);
+// dt.Rows.Add(r);
+
+// dt.Rows.Add(r2);
+// PrintDataTable(dt);
+// dt.AcceptChanges();
+// dt
